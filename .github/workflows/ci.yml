@@ -1,0 +1,85 @@
+# The name of our factory shown on the GitHub website
+name: CI Factory
+
+# WHEN should this factory turn on?
+# "Whenever someone pushes code to the 'main' branch"
+on:
+  push:
+    branches: [main]
+
+# PERMISSIONS:
+# Allow this factory to save the built Docker image to our GitHub account
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ==========================================================
+  # STATION 1: The Inspector (Make sure code is clean)
+  # ==========================================================
+  verify:
+    name: Code Quality Check
+    runs-on: ubuntu-latest # Borrow a fresh Ubuntu cloud machine
+
+    steps:
+      # Step 1: Download our code onto the cloud machine
+      - name: Download repository code
+        uses: actions/checkout@v4
+
+      # Step 2: Install Node.js version 24
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # Step 3: Install our project tools (Prettier, Husky)
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 4: Run our Gatekeeper check (does code pass formatting?)
+      - name: Check code formatting
+        run: npm run validate
+
+  # ==========================================================
+  # STATION 2: The Packager (Build & Store the Docker Container)
+  # ==========================================================
+  build-and-push:
+    name: Build and Store Docker Image
+    needs: verify # Rule: ONLY start Station 2 if Station 1 PASSED!
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Download our code again
+      - name: Download repository code
+        uses: actions/checkout@v4
+
+      # Step 2: Prepare Docker tools
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v3
+
+      # Step 3: Log in to GitHub's storage locker (GHCR) using a free temporary password
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 4: Create unique labels and tags for this image
+      - name: Generate tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short,prefix=sha-
+
+      # Step 5: Build the Dockerfile and upload it to GitHub Container Registry
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
