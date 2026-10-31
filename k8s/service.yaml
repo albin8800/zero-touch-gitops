@@ -6,12 +6,12 @@ metadata:
   labels:
     app: zero-touch-api
 spec:
-  type: ClusterIP # Internal cluster load balancer 
+  type: ClusterIP # Internal cluster load balancer
   ports:
-    - port: 80 # The port other services talk to                                                                                                                                                                                      
+    - port: 80 # The port other services talk to
       targetPort: 3000 # The internal container port where Node.js listens
       protocol: TCP
       name: http
-  selector:                                                                                                                                                                                                                           
-    # Route traffic only to pods with the label "app: zero-touch-api"                                                                                                                                                                 
+  selector:
+    # Route traffic only to pods with the label "app: zero-touch-api"
     app: zero-touch-api

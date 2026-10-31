@@ -44,14 +44,14 @@ spec:
           # Resource Guardrails: Tuned safely for local laptop memory
           resources:
             requests:
-              cpu: 50m # 0.05 CPU core 
+              cpu: 50m # 0.05 CPU core
               memory: 64Mi # 64 Megabytes RAM
             limits:
-              cpu: 150m # 0.15 CPU core 
+              cpu: 150m # 0.15 CPU core
               memory: 128Mi # 128 Megabytes RAM
 
           # Enterprise Security Context (Least Privilege)
           securityContext:
             runAsNonRoot: true
-            runAsUser: 1000 
+            runAsUser: 1000
             allowPrivilegeEscalation: false
