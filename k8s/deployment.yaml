@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zero-touch-api-deployment
+  namespace: zero-touch-gitops
+  labels:
+    app: zero-touch-api
+spec:
+  replicas: 2 # Maintain 2 healthy pod instances at all times
+  selector:
+    matchLabels:
+      app: zero-touch-api
+  template:
+    metadata:
+      labels:
+        app: zero-touch-api
+    spec:
+      containers:
+        - name: api-server
+          # The production image built by our GitHub Actions Factory
+          image: ghcr.io/<YOUR-GITHUB-USERNAME>/zero-touch-gitops:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: http
+
+          # Cloud-Native Health Probes
+          # 1. Readiness: Is the app ready to receive user web traffic?
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          # 2. Liveness: Is the app process alive or frozen?
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+
+          # Resource Guardrails: Tuned safely for local laptop memory
+          resources:
+            requests:
+              cpu: 50m # 0.05 CPU core 
+              memory: 64Mi # 64 Megabytes RAM
+            limits:
+              cpu: 150m # 0.15 CPU core 
+              memory: 128Mi # 128 Megabytes RAM
+
+          # Enterprise Security Context (Least Privilege)
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000 
+            allowPrivilegeEscalation: false
