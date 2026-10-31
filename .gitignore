@@ -1,0 +1,12 @@
+# Dependencies (Never commit external packages)
+node_modules/
+npm-debug.log*
+
+# Secrets and environment configs (Never commit credentials)
+.env
+*.pem
+*.key
+
+# Operating system noise
+.DS_Store
+Thumbs.db
