@@ -1,0 +1,157 @@
+# ==============================================================================
+# Lightweight Monitoring Stack (Prometheus & Grafana)
+# Tuned specifically for local dev clusters (Low Memory Footprint)
+# ==============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+# 1. PROMETHEUS CONFIGURATION (Scrape Rules)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:        
+      scrape_interval: 15s
+    scrape_configs:       
+      - job_name: 'prometheus'
+        static_configs:       
+          - targets: ['localhost:9090']
+      - job_name: 'kubernetes-cadvisor'
+        scheme: https
+        tls_config:  
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+          - role: node        
+        relabel_configs:
+          - target_label: __metrics_path__
+            replacement: /metrics/cadvisor
+
+---
+# 2. PROMETHEUS DEPLOYMENT
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.54.1
+          args:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - '--storage.tsdb.retention.time=6h' # Keep data small to save memory
+          ports:
+            - containerPort: 9090
+          resources:
+            limits:
+              cpu: 100m
+              memory: 200Mi
+            requests:
+              cpu: 50m
+              memory: 100Mi
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/prometheus
+      volumes:
+        - name: config-volume
+          configMap:
+            name: prometheus-config
+---
+# 3. PROMETHEUS SERVICE
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-service
+  namespace: monitoring
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+---
+# 4. GRAFANA DATASOURCE (Auto-connect to Prometheus)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: monitoring
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-service.monitoring.svc.cluster.local:9090                                                                                                                                                              
+        isDefault: true
+---
+# 5. GRAFANA DEPLOYMENT
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.1.0
+          ports:
+            - containerPort: 3000
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: 'admin' # Simple local password for learning
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: 'false'
+          resources:
+            limits:
+              cpu: 100m
+              memory: 200Mi
+            requests:
+              cpu: 50m
+              memory: 100Mi
+          volumeMounts:
+            - name: datasource-volume
+              mountPath: /etc/grafana/provisioning/datasources
+      volumes:
+        - name: datasource-volume
+          configMap:
+            name: grafana-datasources
+---
+# 6. GRAFANA SERVICE
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+  namespace: monitoring
+spec:
+  selector:
+    app: grafana
+  ports:
+    - port: 3000
+      targetPort: 3000
