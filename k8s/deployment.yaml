@@ -18,7 +18,7 @@ spec:
       containers:
         - name: api-server
           # The production image built by our GitHub Actions Factory
-          image: ghcr.io/<YOUR-GITHUB-USERNAME>/zero-touch-gitops:latest
+          image: ghcr.io/albin8800/zero-touch-gitops:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 3000

@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: zero-touch-api-app
+  # ArgoCD reads applications from its own namespace
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  # Source: Where is the code stored?
+  source:
+    repoURL: https://github.com/albin8800/zero-touch-gitops.git
+    targetRevision: main
+    path: k8s # The folder inside GitHub containing our 3 blueprints
+
+  # Destination: Where should ArgoCD deploy it?
+  destination:
+    server: https://kubernetes.default.svc # The local Minikube cluster
+    namespace: zero-touch-gitops
+
+  # GitOps Automation Policy
+  syncPolicy:
+    automated:
+      prune: true # Delete cluster resources if removed from Git
+      selfHeal: true # Overwrite any manual out-of-band cluster changes
+    syncOptions:
+      - CreateNamespace=true # Automatically create zero-touch-gitops namespace if missing
