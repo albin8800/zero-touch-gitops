@@ -6,7 +6,7 @@
 const http = require('http');
 
 const PORT = process.env.PORT || 3000;
-const APP_VERSION = process.env.APP_VERSION || '1.0.0';
+const APP_VERSION = process.env.APP_VERSION || '2.0.0';
 
 const server = http.createServer((req, res) => {
   // Kubernetes Liveness & Readiness Probe Endpoint
@@ -29,7 +29,8 @@ const server = http.createServer((req, res) => {
         service: 'zero-touch-gitops-api',
         version: APP_VERSION,
         environment: process.env.NODE_ENV || 'development',
-        message: 'Continuous Deployment via ArgoCD is active!',
+        message:
+          'Zero-Touch GitOps v2.0 is LIVE! Automated deployment successful!',
       })
     );
     return;
